@@ -31,22 +31,22 @@ account_id = os.environ.get('CDK_DEFAULT_ACCOUNT')
 aws_region = os.environ.get('CDK_DEFAULT_REGION')
 aws_env = {'account': account_id, 'region': aws_region}
 
-umccrise_ecr_repo = 'umccrise'
-codebuild_project_name = 'umccrise_codebuild_project'
+umccrise_ecr_repo = 'umccrise-dragen-testing'
+codebuild_project_name = 'umccrise_codebuild_project-dragen-testing'
 
 common_dev_props = {
-    'namespace': 'umccrise-common-dev',
+    'namespace': 'umccrise-common-dev-dragen-testing',
     'umccrise_ecr_repo': umccrise_ecr_repo,
 }
 
 cicd_dev_props = {
-    'namespace': 'umccrise-cicd',
+    'namespace': 'umccrise-cicd-dragen-testing',
     'codebuild_project_name': codebuild_project_name,
     'refdata_bucket': refdata_bucket,
 }
 
 batch_props = {
-    'namespace': 'umccrise-batch',
+    'namespace': 'umccrise-batch-dragen-testing',
     'container_image': container_image,
     'compute_env_ami': ec2_ami,  # Should be Amazon ECS optimised Linux 2 AMI
     'compute_env_type': compute_env_type,
@@ -59,7 +59,7 @@ batch_props = {
 }
 
 iap_tes_dev_props = {
-    'namespace': 'umccrise-iap-tes-dev',
+    'namespace': 'umccrise-iap-tes-dev-dragen-testing',
     'iap_api_base_url': 'aps2.platform.illumina.com',
     'task_id': 'tdn.3c6ef303643245bfa39542c7493ee0ea',
     'task_version_id': 'tvn.8ba13f1312144a8682020ae71a4ab9ce',
@@ -73,7 +73,7 @@ iap_tes_dev_props = {
 }
 
 slack_dev_props = {
-    'namespace': 'umccrise-codebuild-slack-dev',
+    'namespace': 'umccrise-codebuild-slack-dev-dragen-testing',
     'slack_channel': '#arteria-dev',
     'codebuild_project_name': codebuild_project_name,
     'aws_account': aws_env['account']
@@ -106,18 +106,6 @@ BatchStack(
     props=batch_props,
     env=aws_env
 )
-IapTesStack(
-    app,
-    iap_tes_dev_props['namespace'],
-    iap_tes_dev_props,
-    env=aws_env
-)
 slack_dev_props['ecr_name'] = common.ecr_name
 slack_dev_props['cb_project'] = cicd.cb_project
-CodeBuildLambdaStack(
-    app,
-    slack_dev_props['namespace'],
-    slack_dev_props,
-    env=aws_env
-)
 app.synth()

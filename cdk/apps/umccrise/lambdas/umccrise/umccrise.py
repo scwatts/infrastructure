@@ -1,9 +1,9 @@
 import os
 import boto3
 
-ECR_REPO_NAME = 'umccrise'
-JOB_DEF_NAME = 'umccrise'
-ECR_IMAGE_NAME = '843407916570.dkr.ecr.ap-southeast-2.amazonaws.com/umccrise'
+ECR_REPO_NAME = 'umccrise-dragen-testing'
+JOB_DEF_NAME = 'umccrise-dragen-testing'
+ECR_IMAGE_NAME = '843407916570.dkr.ecr.ap-southeast-2.amazonaws.com/umccrise-dragen-testing'
 
 IMAGE_CONFIGURABLE = os.environ.get('IMAGE_CONFIGURABLE') in ['true', 'True', 'TRUE', '1', 1]
 JOB_DEF = os.environ.get('JOBDEF')
@@ -76,6 +76,18 @@ def fetch_ecr_image_tags():
     return image_tags
 
 
+def check_s3_object_exists(input_bucket, s3_path):
+    response = s3.list_objects(Bucket=input_bucket, MaxKeys=3, Prefix=s3_path)
+    if not response.get('Contents') or len(response['Contents']) < 1:
+        print(f"List request returned no result for path {s3_path} in bucket {input_bucket}")
+        # TODO: introduce proper function to deal with Lambda output/return messages
+        return {
+            'statusCode': 400,
+            'error': 'Bad parameter',
+            'message': f"Provided S3 path ({s3_path}) does not exist in bucket {input_bucket}!"
+        }
+
+
 def lambda_handler(event, context):
     # Log the received event
     print(f"Received event: {event}")
@@ -118,6 +130,7 @@ def lambda_handler(event, context):
 
     # Optional parameters
     container_overrides = event['containerOverrides'] if event.get('containerOverrides') else {}
+    input_tsv = event.get('inputTSV', str()).strip('/')  # remove leading/trailing slashes
     parameters = event['parameters'] if event.get('parameters') else {}
     depends_on = event['dependsOn'] if event.get('dependsOn') else []
     job_queue = event['jobQueue'] if event.get('jobQueue') else JOB_QUEUE
@@ -130,22 +143,23 @@ def lambda_handler(event, context):
     job_name = event['jobName'] if event.get('jobName') else job_name_from_s3(input_bucket, input_dir)
     job_name = JOBNAME_PREFIX + '_' + job_name
     print(f"inputDir: {input_dir}  in input bucket: {input_bucket}")
+    if input_tsv:
+        print(f'inputTSV: {input_tsv} in input bucket: {input_bucket}')
 
     try:
         # Check if there are objects for the given input
-        response = s3.list_objects(Bucket=input_bucket, MaxKeys=3, Prefix=input_dir)
-        if not response.get('Contents') or len(response['Contents']) < 1:
-            print(f"List request returned no result for path {input_dir} in bucket {input_bucket}")
-            # TODO: introduce proper function to deal with Lambda output/return messages
-            return {
-                'statusCode': 400,
-                'error': 'Bad parameter',
-                'message': f"Provided S3 path ({input_dir}) does not exist in bucket {input_bucket}!"
-            }
+        input_dir_s3_error = check_s3_object_exists(input_bucket, input_dir)
+        if input_dir_s3_error:
+            return input_dir_s3_error
+        if input_tsv:
+            input_tsv_s3_error = check_s3_object_exists(input_bucket, input_tsv)
+            if input_tsv_s3_error:
+                return input_tsv_s3_error
 
         # Set/Overwrite the environment of the container with our data
         container_overrides['environment'] = [
             {'name': 'S3_INPUT_DIR', 'value': input_dir},
+            {'name': 'S3_INPUT_TSV', 'value': input_tsv},
             {'name': 'S3_DATA_BUCKET', 'value': input_bucket},
             {'name': 'S3_RESULT_BUCKET', 'value': result_bucket},
             {'name': 'S3_REFDATA_BUCKET', 'value': refdata_bucket},

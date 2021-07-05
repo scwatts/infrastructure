@@ -22,7 +22,7 @@ class BatchStack(core.Stack):
         ecr_repo = ecr.Repository.from_repository_name(
             self,
             'UmccriseEcrRepo',
-            repository_name='umccrise'
+            repository_name='umccrise-dragen-testing'
         )
 
         ################################################################################
@@ -67,7 +67,7 @@ class BatchStack(core.Stack):
         batch_instance_role = iam.Role(
             self,
             'BatchInstanceRole',
-            role_name='UmccriseBatchInstanceRole',
+            role_name='UmccriseBatchInstanceRole-dragen-testing',
             assumed_by=iam.CompositePrincipal(
                 iam.ServicePrincipal('ec2.amazonaws.com'),
                 iam.ServicePrincipal('ecs.amazonaws.com')
@@ -107,7 +107,7 @@ class BatchStack(core.Stack):
         batch_instance_profile = iam.CfnInstanceProfile(
             self,
             'BatchInstanceProfile',
-            instance_profile_name='UmccriseBatchInstanceProfile',
+            instance_profile_name='UmccriseBatchInstanceProfile-dragen-testing',
             roles=[batch_instance_role.role_name]
         )
 
@@ -200,7 +200,7 @@ class BatchStack(core.Stack):
         launch_template = ec2.CfnLaunchTemplate(
             self,
             'UmccriseBatchComputeLaunchTemplate',
-            launch_template_name='UmccriseBatchComputeLaunchTemplate',
+            launch_template_name='UmccriseBatchComputeLaunchTemplate-dragen-testing',
             launch_template_data={
                 'userData': core.Fn.base64(mime_wrapper.render()),
                 'blockDeviceMappings': block_device_mappings,
@@ -244,7 +244,7 @@ class BatchStack(core.Stack):
         my_compute_env = batch.ComputeEnvironment(
             self,
             'UmccriseBatchComputeEnv',
-            compute_environment_name="cdk-umccrise-batch-compute-env",
+            compute_environment_name="cdk-umccrise-batch-compute-env-dragen-testing",
             service_role=batch_service_role,
             compute_resources=my_compute_res
         )
@@ -255,7 +255,7 @@ class BatchStack(core.Stack):
         job_queue = batch.JobQueue(
             self,
             'UmccriseJobQueue',
-            job_queue_name='cdk-umccrise_job_queue',
+            job_queue_name='cdk-umccrise_job_queue-dragen-testing',
             compute_environments=[
                 batch.JobQueueComputeEnvironment(
                     compute_environment=my_compute_env,
@@ -305,7 +305,7 @@ class BatchStack(core.Stack):
         job_definition = batch.JobDefinition(
             self,
             'UmccriseJobDefinition',
-            job_definition_name='cdk-umccrise-job-definition',
+            job_definition_name='cdk-umccrise-job-definition-dragen-testing',
             parameters={'vcpus': '1'},
             container=job_container,
             retry_attempts=2,
@@ -336,7 +336,7 @@ class BatchStack(core.Stack):
         lmbda.Function(
             self,
             'UmccriseLambda',
-            function_name='umccrise_batch_lambda',
+            function_name='umccrise_batch_lambda-dragen-testing',
             handler='umccrise.lambda_handler',
             runtime=lmbda.Runtime.PYTHON_3_7,
             code=lmbda.Code.from_asset('lambdas/umccrise'),

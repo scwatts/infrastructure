@@ -10,7 +10,7 @@
             "Type": "String"
         },
         "/cdk/umccrise/batch/default_container_image": {
-            "Value": "843407916570.dkr.ecr.ap-southeast-2.amazonaws.com/umccrise:1.1.3-rc.2-e6232d42d8",
+            "Value": "843407916570.dkr.ecr.ap-southeast-2.amazonaws.com/umccrise-dragen-testing:1.2.1-dev",
             "Type": "String"
         },
         "/cdk/umccrise/batch/image_configurable": {
@@ -18,11 +18,11 @@
             "Type": "String"
         },
         "/cdk/umccrise/batch/input_bucket": {
-            "Value": "umccr-primary-data-prod",
+            "Value": "umccr-temp-dev",
             "Type": "String"
         },
         "/cdk/umccrise/batch/result_bucket": {
-            "Value": "umccr-primary-data-dev",
+            "Value": "umccr-temp-dev",
             "Type": "String"
         },
         "/cdk/umccrise/batch/refdata_bucket": {
@@ -30,11 +30,11 @@
             "Type": "String"
         },
         "/cdk/umccrise/batch/ro_buckets": {
-            "Value": "umccr-primary-data-prod,umccr-validation-prod,umccr-refdata-prod,umccr-refdata-dev",
+            "Value": "umccr-refdata-prod",
             "Type": "StringList"
         },
         "/cdk/umccrise/batch/rw_buckets": {
-            "Value": "umccr-primary-data-dev,umccr-research-dev,umccr-temp-dev",
+            "Value": "umccr-temp-dev",
             "Type": "StringList"
         }
     }

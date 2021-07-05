@@ -5,7 +5,8 @@ set -euxo pipefail
 # this is the actual command/script called by the Batch job
 
 # NOTE: This script expects the following variables to be set on the environment
-# - S3_INPUT_DIR      : The bcbio directory (S3 prefix) for which to run UMCCRise
+# - S3_INPUT_DIR      : The directory (S3 prefix) for which to run UMCCRise
+# - S3_INPUT_TSV      : An optional path for custom TSV input. Contents of TSV must point to local files staged from S3_INPUT_DIR
 # - S3_DATA_BUCKET    : The S3 bucket that holds the above data
 # - S3_RESULT_BUCKET  : The S3 bucket that recieves the result data
 # - S3_REFDATA_BUCKET : The S3 bucket for the reference data expected by UMCCRise
@@ -46,6 +47,7 @@ function publish { #arg 1: metric name, arg 2: value
 
     # TODO: restructure metric, as is now only has one value (the duration) that can be graphed
     # TODO: ideally multiple metrics (duration, disc space, ...) are recorded for each job
+    # TODO: determine value of including the S3_INPUT_TSV optional
     aws cloudwatch put-metric-data \
     --metric-name ${1} \
     --namespace $CLOUDWATCH_NAMESPACE \
@@ -74,7 +76,7 @@ echo "Using  ${avail_cpus} CPUs."
 # create a job specific output directory
 job_output_dir=/work/output/${S3_INPUT_DIR}-${timestamp}
 
-mkdir -p /work/{bcbio_project,${job_output_dir},panel_of_normals,pcgr,seq,tmp,validation}
+mkdir -p /work/{project,${job_output_dir},panel_of_normals,pcgr,seq,tmp,validation}
 
 # Install the AWS CLI
 curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -98,15 +100,27 @@ timer dvc pull
 cd /
 publish S3PullRefGenome $duration
 
-echo "PULL input (bcbio results) from S3 bucket"
-timer aws s3 sync --only-show-errors --exclude=* --include=final/* --include=config/* s3://${S3_DATA_BUCKET}/${S3_INPUT_DIR} /work/bcbio_project/${S3_INPUT_DIR}/
+echo "PULL input (results) from S3 bucket"
+if [[ -z ${S3_INPUT_TSV} ]]; then
+  timer aws s3 sync --only-show-errors --exclude=* --include=final/* --include=config/* s3://${S3_DATA_BUCKET}/${S3_INPUT_DIR} /work/project/${S3_INPUT_DIR}/
+else
+  # TODO: Pull only required DRAGEN data
+  timer aws s3 sync --only-show-errors s3://${S3_DATA_BUCKET}/${S3_INPUT_DIR} /work/project/${S3_INPUT_DIR}/
+  aws s3 cp --only-show-errors s3://${S3_DATA_BUCKET}/${S3_INPUT_TSV} /work/project/custom_input.tsv
+fi
+
 publish S3PullInput $duration
 
 echo "umccrise version:"
 umccrise --version
 
 echo "RUN umccrise"
-timer umccrise /work/bcbio_project/${S3_INPUT_DIR} -j ${avail_cpus} -o ${job_output_dir} --genomes ${REFDATA_DIR}/genomes
+if [[ -z /work/project/${S3_INPUT_TSV} ]]; then
+  timer umccrise /work/project/${S3_INPUT_DIR} -j ${avail_cpus} -o ${job_output_dir} --genomes ${REFDATA_DIR}/genomes
+else
+  timer umccrise /work/project/custom_input.tsv -j ${avail_cpus} -o ${job_output_dir} --genomes ${REFDATA_DIR}/genomes
+fi
+
 publish RunUMCCRISE $duration
 
 echo "PUSH results"
